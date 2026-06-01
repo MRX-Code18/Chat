@@ -12,7 +12,6 @@
 
 <div class="auth-page" id="app">
 
-  <!-- LOGIN -->
   <div class="auth-card" id="view-login">
     <div class="auth-logo">Zing Bai</div>
     <div class="auth-subtitle">Tu espacio para conectar con los que importan</div>
@@ -39,7 +38,6 @@
     </div>
   </div>
 
-  <!-- REGISTRO -->
   <div class="auth-card hidden" id="view-register">
     <div class="auth-logo">Zing Bai</div>
     <div class="auth-subtitle">Crea tu cuenta — solo datos básicos</div>
@@ -116,7 +114,9 @@ async function doLogin() {
 
   const { error } = await sb.auth.signInWithPassword({ email, password: pass });
   if (error) return showError('login-error', 'Correo o contraseña incorrectos');
-  window.location.href = '../index.html';
+  
+  // CAMBIO: Se ajustó a './../index.html' para asegurar que la navegación relativa funcione correctamente en subcarpetas de GitHub Pages
+  window.location.href = './../index.html';
 }
 
 async function doRegister() {
@@ -131,15 +131,22 @@ async function doRegister() {
   const { data, error } = await sb.auth.signUp({ email, password: pass });
   if (error) return showError('reg-error', error.message);
 
-  // Crear perfil en la tabla profiles
-  await sb.from('profiles').insert({
-    id: data.user.id,
-    name,
-    handle: name.toLowerCase().replace(/\s+/g, '_') + '_' + Math.floor(Math.random()*999),
-    pronouns: selectedPronoun,
-    birthday: bday,
-    created_at: new Date().toISOString()
-  });
+  // CAMBIO: Se añadió una validación defensiva por si data o data.user llegan nulos, evitando que el script colapse
+  if (data && data.user) {
+    try {
+      // Crear perfil en la tabla profiles
+      await sb.from('profiles').insert({
+        id: data.user.id,
+        name,
+        handle: name.toLowerCase().replace(/\s+/g, '_') + '_' + Math.floor(Math.random()*999),
+        pronouns: selectedPronoun,
+        birthday: bday,
+        created_at: new Date().toISOString()
+      });
+    } catch (dbError) {
+      console.error("Error al insertar perfil en la base de datos:", dbError);
+    }
+  }
 
   document.getElementById('reg-success').textContent = '¡Cuenta creada! Revisa tu correo para confirmar.';
   document.getElementById('reg-success').classList.remove('hidden');
@@ -149,7 +156,8 @@ async function doRegister() {
 // Si ya está logueado, redirigir
 (async () => {
   const user = await getCurrentUser();
-  if (user) window.location.href = '../index.html';
+  // CAMBIO: Se ajustó a './../index.html' para evitar bucles infinitos de redirección fallida al verificar el estado de la sesión
+  if (user) window.location.href = './../index.html';
 })();
 </script>
 </body>
