@@ -1,6 +1,6 @@
 // ⚠️ CAMBIA ESTOS VALORES por los de tu Supabase ⚠️
-const SUPABASE_URL = 'https://TU_PROYECTO.supabase.co';
-const SUPABASE_ANON_KEY = 'TU_CLAVE_ANONIMA';
+const SUPABASE_URL = 'https://jqcephrggkuiopxvqnlf.supabase.co/rest/v1/';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpxY2VwaHJnZ2t1aW9weHZxbmxmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAyNjU0NTMsImV4cCI6MjA5NTg0MTQ1M30.sltHDd2yGzQgwKgG8ye5eZ3wI-H9r_oBMsQbVHZI2vw';
 
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let currentUser = null;
