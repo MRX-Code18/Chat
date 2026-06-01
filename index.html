@@ -64,23 +64,32 @@ let currentProfile = null;
 let currentSection = 'chats';
 
 async function init() {
-  currentUser = await getCurrentUser();
-  if (!currentUser) return window.location.href = 'pages/auth.html';
+  try {
+    currentUser = await getCurrentUser();
+    // Corregido: Se añade './' para asegurar la ruta relativa en GitHub Pages
+    if (!currentUser) return window.location.href = './pages/auth.html';
 
-  currentProfile = await getProfile(currentUser.id);
-  if (!currentProfile) return window.location.href = 'pages/auth.html';
+    currentProfile = await getProfile(currentUser.id);
+    // Corregido: Se añade './' para asegurar la ruta relativa en GitHub Pages
+    if (!currentProfile) return window.location.href = './pages/auth.html';
 
-  // Mostrar avatar en sidebar
-  const av = document.getElementById('sidebar-avatar');
-  if (currentProfile.avatar_url) {
-    av.innerHTML = `<img src="${currentProfile.avatar_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`;
-  } else {
-    av.textContent = initials(currentProfile.name);
+    // Mostrar avatar en sidebar
+    const av = document.getElementById('sidebar-avatar');
+    if (currentProfile.avatar_url) {
+      av.innerHTML = `<img src="${currentProfile.avatar_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`;
+    } else {
+      // Nota: Asegúrate de que la función 'initials()' esté declarada en tus archivos JS cargados arriba
+      av.textContent = typeof initials === 'function' ? initials(currentProfile.name) : '?';
+    }
+
+    loadChats(currentUser, currentProfile);
+    loadNotifsBadge();
+    subscribeToNotifs();
+    
+  } catch (error) {
+    console.error("Error durante la inicialización:", error);
+    showToast("Error de conexión. Revisa la consola.", "#ff4a4a");
   }
-
-  loadChats(currentUser, currentProfile);
-  loadNotifsBadge();
-  subscribeToNotifs();
 }
 
 function goTo(section) {
@@ -108,13 +117,17 @@ function showToast(msg, color = '') {
 }
 
 async function loadNotifsBadge() {
-  const { count } = await sb.from('notifications')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', currentUser.id)
-    .eq('read', false);
-  const badge = document.getElementById('badge-notifs');
-  if (count > 0) { badge.textContent = count; badge.classList.remove('hidden'); }
-  else badge.classList.add('hidden');
+  try {
+    const { count } = await sb.from('notifications')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', currentUser.id)
+      .eq('read', false);
+    const badge = document.getElementById('badge-notifs');
+    if (count > 0) { badge.textContent = count; badge.classList.remove('hidden'); }
+    else badge.classList.add('hidden');
+  } catch (e) {
+    console.error("Error al cargar badge de notificaciones:", e);
+  }
 }
 
 function subscribeToNotifs() {
@@ -125,7 +138,7 @@ function subscribeToNotifs() {
     }, () => {
       loadNotifsBadge();
       if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification('Zing Bai', { body: 'Tienes una nueva notificación', icon: '/favicon.ico' });
+        new Notification('Zing Bai', { body: 'Tienes una nueva notificación', icon: './favicon.ico' });
       }
     }).subscribe();
 }
@@ -135,6 +148,7 @@ if ('Notification' in window && Notification.permission === 'default') {
   Notification.requestPermission();
 }
 
+// Arrancar la app
 init();
 </script>
 </body>
