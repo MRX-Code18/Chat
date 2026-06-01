@@ -1,24 +1,33 @@
 // ============================================
 //  ZING BAI — Supabase Config
-//  🔧 Cambia estos valores con los tuyos de:
-//     https://app.supabase.com → Settings → API
 // ============================================
- const SUPABASE_URL = 'https://xcldbsvxxcxfnbkpotzf.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpxY2VwaHJnZ2t1aW9weHZxbmxmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAyNjU0NTMsImV4cCI6MjA5NTg0MTQ1M30.sltHDd2yGzQgwKgG8ye5eZ3wI-H9r_oBMsQbVHZI2vw';
+const SUPABASE_URL = 'https://xcldbsvxxcxfnbkpotzf.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6..."'; // Tu llave completa aquí
 
 const { createClient } = supabase;
-const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+// CORREGIDO: Ahora sí usa SUPABASE_ANON_KEY en lugar de SUPABASE_KEY
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // Helper: obtener usuario actual
 async function getCurrentUser() {
-  const { data: { user } } = await sb.auth.getUser();
-  return user;
+  try {
+    const { data: { user } } = await sb.auth.getUser();
+    return user;
+  } catch (e) {
+    console.error("Error al obtener usuario:", e);
+    return null;
+  }
 }
 
 // Helper: obtener perfil del usuario
 async function getProfile(userId) {
-  const { data } = await sb.from('profiles').select('*').eq('id', userId).single();
-  return data;
+  try {
+    const { data } = await sb.from('profiles').select('*').eq('id', userId).single();
+    return data;
+  } catch (e) {
+    console.error("Error al obtener perfil:", e);
+    return null;
+  }
 }
 
 // Helper: iniciales de un nombre
