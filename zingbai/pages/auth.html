@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Zing Bai — Entrar</title>
+  <link rel="stylesheet" href="../css/style.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<div class="auth-page" id="app">
+
+  <!-- LOGIN -->
+  <div class="auth-card" id="view-login">
+    <div class="auth-logo">Zing Bai</div>
+    <div class="auth-subtitle">Tu espacio para conectar con los que importan</div>
+
+    <div class="auth-form">
+      <div id="login-error" class="error-msg hidden"></div>
+
+      <div class="form-group">
+        <div class="input-label">Correo electrónico</div>
+        <input class="input" id="login-email" type="email" placeholder="tu@correo.com" />
+      </div>
+      <div class="form-group">
+        <div class="input-label">Contraseña</div>
+        <input class="input" id="login-pass" type="password" placeholder="••••••••" />
+      </div>
+
+      <button class="btn btn-primary" style="width:100%;margin-top:4px;" onclick="doLogin()">
+        <i class="ti ti-login"></i> Entrar
+      </button>
+
+      <div class="auth-switch">
+        ¿No tienes cuenta? <a onclick="switchView('register')">Regístrate aquí</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- REGISTRO -->
+  <div class="auth-card hidden" id="view-register">
+    <div class="auth-logo">Zing Bai</div>
+    <div class="auth-subtitle">Crea tu cuenta — solo datos básicos</div>
+
+    <div class="auth-form">
+      <div id="reg-error" class="error-msg hidden"></div>
+      <div id="reg-success" class="success-msg hidden"></div>
+
+      <div class="form-group">
+        <div class="input-label">Nombre o alias</div>
+        <input class="input" id="reg-name" type="text" placeholder="¿Cómo te llamamos?" />
+      </div>
+      <div class="form-group">
+        <div class="input-label">Correo electrónico</div>
+        <input class="input" id="reg-email" type="email" placeholder="tu@correo.com" />
+      </div>
+      <div class="form-group">
+        <div class="input-label">Contraseña</div>
+        <input class="input" id="reg-pass" type="password" placeholder="Mínimo 6 caracteres" />
+      </div>
+      <div class="form-group">
+        <div class="input-label">Fecha de nacimiento</div>
+        <input class="input" id="reg-bday" type="date" />
+      </div>
+      <div class="form-group">
+        <div class="input-label">Pronombres</div>
+        <div class="pronouns-select" id="pronouns-wrap">
+          <span class="pronoun-opt" data-val="él/him">él/him</span>
+          <span class="pronoun-opt" data-val="ella/her">ella/her</span>
+          <span class="pronoun-opt" data-val="elle/them">elle/them</span>
+          <span class="pronoun-opt" data-val="no especificar">no especificar</span>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" style="width:100%;margin-top:4px;" onclick="doRegister()">
+        <i class="ti ti-user-plus"></i> Crear cuenta
+      </button>
+
+      <div class="auth-switch">
+        ¿Ya tienes cuenta? <a onclick="switchView('login')">Inicia sesión</a>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="../js/supabase.js"></script>
+<script>
+// Pronombres selectable
+let selectedPronoun = 'no especificar';
+document.querySelectorAll('.pronoun-opt').forEach(el => {
+  el.addEventListener('click', () => {
+    document.querySelectorAll('.pronoun-opt').forEach(e => e.classList.remove('selected'));
+    el.classList.add('selected');
+    selectedPronoun = el.dataset.val;
+  });
+});
+
+function switchView(view) {
+  document.getElementById('view-login').classList.toggle('hidden', view !== 'login');
+  document.getElementById('view-register').classList.toggle('hidden', view !== 'register');
+}
+
+function showError(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = msg; el.classList.remove('hidden');
+  setTimeout(() => el.classList.add('hidden'), 4000);
+}
+
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const pass = document.getElementById('login-pass').value;
+  if (!email || !pass) return showError('login-error', 'Llena todos los campos');
+
+  const { error } = await sb.auth.signInWithPassword({ email, password: pass });
+  if (error) return showError('login-error', 'Correo o contraseña incorrectos');
+  window.location.href = '../index.html';
+}
+
+async function doRegister() {
+  const name = document.getElementById('reg-name').value.trim();
+  const email = document.getElementById('reg-email').value.trim();
+  const pass = document.getElementById('reg-pass').value;
+  const bday = document.getElementById('reg-bday').value;
+
+  if (!name || !email || !pass || !bday) return showError('reg-error', 'Llena todos los campos');
+  if (pass.length < 6) return showError('reg-error', 'La contraseña necesita al menos 6 caracteres');
+
+  const { data, error } = await sb.auth.signUp({ email, password: pass });
+  if (error) return showError('reg-error', error.message);
+
+  // Crear perfil en la tabla profiles
+  await sb.from('profiles').insert({
+    id: data.user.id,
+    name,
+    handle: name.toLowerCase().replace(/\s+/g, '_') + '_' + Math.floor(Math.random()*999),
+    pronouns: selectedPronoun,
+    birthday: bday,
+    created_at: new Date().toISOString()
+  });
+
+  document.getElementById('reg-success').textContent = '¡Cuenta creada! Revisa tu correo para confirmar.';
+  document.getElementById('reg-success').classList.remove('hidden');
+  setTimeout(() => switchView('login'), 2500);
+}
+
+// Si ya está logueado, redirigir
+(async () => {
+  const user = await getCurrentUser();
+  if (user) window.location.href = '../index.html';
+})();
+</script>
+</body>
+</html>

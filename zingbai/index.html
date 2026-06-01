@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Zing Bai</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<div class="app-shell">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">Z<br>B</div>
+
+    <button class="nav-btn active" id="nav-chats" onclick="goTo('chats')" title="Mensajes">
+      <i class="ti ti-message-circle"></i>
+      <span class="badge hidden" id="badge-chats">0</span>
+    </button>
+    <button class="nav-btn" id="nav-feed" onclick="goTo('feed')" title="Feed">
+      <i class="ti ti-layout-grid"></i>
+    </button>
+    <button class="nav-btn" id="nav-groups" onclick="goTo('groups')" title="Grupos">
+      <i class="ti ti-users"></i>
+    </button>
+    <button class="nav-btn" id="nav-notifs" onclick="goTo('notifs')" title="Notificaciones">
+      <i class="ti ti-bell"></i>
+      <span class="badge hidden" id="badge-notifs">0</span>
+    </button>
+    <button class="nav-btn" id="nav-search" onclick="goTo('search')" title="Buscar personas">
+      <i class="ti ti-search"></i>
+    </button>
+
+    <div class="sidebar-spacer"></div>
+
+    <button class="nav-btn" id="nav-profile" onclick="goTo('profile')" title="Mi perfil">
+      <div class="avatar avatar-xs" id="sidebar-avatar">?</div>
+    </button>
+  </aside>
+
+  <!-- SECCIONES -->
+  <div id="section-chats" class="main" style="flex:1;display:flex;"></div>
+  <div id="section-feed" class="main hidden" style="flex:1;display:flex;"></div>
+  <div id="section-groups" class="main hidden" style="flex:1;display:flex;"></div>
+  <div id="section-notifs" class="main hidden" style="flex:1;display:flex;flex-direction:column;"></div>
+  <div id="section-search" class="main hidden" style="flex:1;display:flex;flex-direction:column;"></div>
+  <div id="section-profile" class="main hidden" style="flex:1;display:flex;flex-direction:column;overflow-y:auto;"></div>
+
+</div>
+
+<script src="js/supabase.js"></script>
+<script src="js/chats.js"></script>
+<script src="js/feed.js"></script>
+<script src="js/groups.js"></script>
+<script src="js/notifs.js"></script>
+<script src="js/search.js"></script>
+<script src="js/profile.js"></script>
+<script>
+let currentUser = null;
+let currentProfile = null;
+let currentSection = 'chats';
+
+async function init() {
+  currentUser = await getCurrentUser();
+  if (!currentUser) return window.location.href = 'pages/auth.html';
+
+  currentProfile = await getProfile(currentUser.id);
+  if (!currentProfile) return window.location.href = 'pages/auth.html';
+
+  // Mostrar avatar en sidebar
+  const av = document.getElementById('sidebar-avatar');
+  if (currentProfile.avatar_url) {
+    av.innerHTML = `<img src="${currentProfile.avatar_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`;
+  } else {
+    av.textContent = initials(currentProfile.name);
+  }
+
+  loadChats(currentUser, currentProfile);
+  loadNotifsBadge();
+  subscribeToNotifs();
+}
+
+function goTo(section) {
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('nav-' + section).classList.add('active');
+  ['chats','feed','groups','notifs','search','profile'].forEach(s => {
+    document.getElementById('section-' + s).classList.toggle('hidden', s !== section);
+  });
+  currentSection = section;
+
+  if (section === 'feed') loadFeed(currentUser, currentProfile);
+  if (section === 'groups') loadGroups(currentUser, currentProfile);
+  if (section === 'notifs') loadNotifs(currentUser, currentProfile);
+  if (section === 'search') loadSearch(currentUser, currentProfile);
+  if (section === 'profile') loadProfile(currentUser, currentProfile);
+}
+
+function showToast(msg, color = '') {
+  const t = document.createElement('div');
+  t.className = 'toast';
+  if (color) t.style.borderColor = color;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+
+async function loadNotifsBadge() {
+  const { count } = await sb.from('notifications')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', currentUser.id)
+    .eq('read', false);
+  const badge = document.getElementById('badge-notifs');
+  if (count > 0) { badge.textContent = count; badge.classList.remove('hidden'); }
+  else badge.classList.add('hidden');
+}
+
+function subscribeToNotifs() {
+  sb.channel('notifs-' + currentUser.id)
+    .on('postgres_changes', {
+      event: 'INSERT', schema: 'public', table: 'notifications',
+      filter: `user_id=eq.${currentUser.id}`
+    }, () => {
+      loadNotifsBadge();
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('Zing Bai', { body: 'Tienes una nueva notificación', icon: '/favicon.ico' });
+      }
+    }).subscribe();
+}
+
+// Pedir permiso para notificaciones
+if ('Notification' in window && Notification.permission === 'default') {
+  Notification.requestPermission();
+}
+
+init();
+</script>
+</body>
+</html>
